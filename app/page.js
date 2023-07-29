@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo } from "react"
 import { useState } from "react"
+import { signIn, signOut, useSession } from 'next-auth/react'
 
 function getAnilistUserWatchingList(user) {
   return fetch(`https://graphql.anilist.co`, {
@@ -112,28 +113,28 @@ function AnimeCard({ anime }) {
   const airingDayString = getAiringDay(anime)
 
   return (
-    <div className="h-44 w-full md:w-60 md:h-auto md:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
-      <div className="w-full h-1/2 ">
-        <img src={anime.media.bannerImage || anime.media.coverImage.extraLarge} alt={anime.media.title.romaji} className="w-full h-full object-cover brightness-50" />
+    <div className="w-full h-full aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
+      <div className="w-full h-1/2 relative">
+        <img src={anime.media.bannerImage || anime.media.coverImage.extraLarge} alt={anime.media.title.romaji} className="w-full h-full object-cover brightness-50 absolute" />
       </div>
       <div className="w-full h-1/2 bg-anilist-100">
       </div>
-      <div className="absolute inset-0 p-2 flex items-end">
-        <div className="w-1/3 h-full flex items-center justify-center -translate-y-0.5">
-          <img src={anime.media.coverImage.large} alt={anime.media.title.romaji} className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto rounded" />
+      <div className="absolute inset-0 p-0 md:p-2 flex items-end  -translate-y-0.5">
+        <div className="w-2/5 md:1/3 h-full flex items-center justify-center py-0.5">
+          <img src={anime.media.coverImage.large} alt={anime.media.title.romaji} className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto md:rounded object-cover" />
         </div>
-        <div className="w-2/3 h-1/2 p-2 ">
+        <div className="w-3/5 md:2/3 h-1/2 p-2 flex flex-col">
           <div className="truncate text-opacity-90 text-white mt-0.5">
             {anime.media.title.english || anime.media.title.romaji}
           </div>
           <div className="text-xs text-opacity-50 text-white">
             {timeUntilAiringStr}
           </div>
-          <div className="flex justify-between text-anilist-200">
+          <div className="flex justify-between text-anilist-200 flex-1">
             {episodesBehind > 0 ? <span className="text-xs mr-1 text-opacity-75 text-anilist-400">
               {episodesBehind + " behind"}
             </span> : <span className="text-white text-xs text-opacity-25">Caught up</span>}
-            <span>
+            <span className="mt-auto">
               {anime.progress}
               {anime.media?.episodes > 0 && `/${anime.media.episodes}`}</span>
           </div>
@@ -141,7 +142,7 @@ function AnimeCard({ anime }) {
       </div>
       {episodesBehind > 0 && <div className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-400 opacity-50 w-full`}>
       </div>}
-      {<div style={{width: percentUntilAiring + "%"}}  className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-200 w-full self-start`}></div>}
+      {<div style={{ width: percentUntilAiring + "%" }} className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-200 w-full self-start`}></div>}
     </div>
   )
 }
@@ -159,18 +160,25 @@ function getTotalBehind(list) {
   return list.reduce((acc, anime) => acc + getEpisodesBehind(anime), 0)
 }
 
-function AnimeList({list, filterFunction, title, className})
-{
+function AnimeList({ list, filterFunction, title, className }) {
   const newList = list.filter(filterFunction);
 
   return (
-    <div className={`flex flex-wrap gap-4 p-8 + ${className}`}>
+    <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
       <div className="w-full text-xl font-semibold text-white">
-          {title}
+        {title}
       </div>
-      {newList.length > 0 ? newList.map((item, i) => (
+      <div
+        className="w-full"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(15rem, 1fr))",
+          gap: "1rem"
+        }}>
+        {newList.length > 0 ? newList.map((item, i) => (
           <AnimeCard anime={item} key={i} />
         )) : <div className="text-white text-opacity-50">wtf...</div>}
+      </div>
     </div>
   )
 }
@@ -186,8 +194,9 @@ export default function Home() {
 
   return (
     <main className="">
-      <div className="bg-anilist-300 rounded shadow-lg md:h-screen">
-        <AnimeList list={list} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} Episodes Behind`} className="" />
+      <button onClick={() => signIn()} className="fixed top-0 right-0 p-4 text-white bg-anilist-400">Sign in</button>
+      <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
+        <AnimeList list={list} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="" />
       </div>
       {
         weekDaysStartingWithToday.map((day, i) => (
