@@ -165,7 +165,7 @@ function AnimeList({list, filterFunction, title, className})
 
   return (
     <div className={`flex flex-wrap gap-4 p-8 + ${className}`}>
-      <div className="w-full text-xl font-semibold">
+      <div className="w-full text-xl font-semibold text-white">
           {title}
       </div>
       {newList.length > 0 ? newList.map((item, i) => (
