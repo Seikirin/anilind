@@ -149,7 +149,7 @@ function AnimeCard({ anime, session, setChanged }) {
 
   return (
     <div className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
-      {episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-25 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity">
+      {episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={() => requestAnilistIncreaseProgressByOne(anime, session, setChanged)}
           className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
