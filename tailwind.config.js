@@ -10,6 +10,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '570px',
+      },
       colors: {
         anilist: {
           50: '#0B1622',

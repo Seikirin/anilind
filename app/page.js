@@ -2,6 +2,7 @@
 import { useEffect, useMemo } from "react"
 import { useState } from "react"
 import { signIn, signOut, useSession } from 'next-auth/react'
+import { getToken } from "next-auth/jwt";
 
 function getAnilistUserWatchingList(user) {
   return fetch(`https://graphql.anilist.co`, {
@@ -39,6 +40,7 @@ function getAnilistUserWatchingList(user) {
                 bannerImage
                 season
                 seasonYear
+                id
                 startDate {
                   year
                   month
@@ -101,7 +103,35 @@ function getAiringDay(anime) {
   return airingDay ? new Date(airingDay * 1000).toLocaleDateString('en-US', { weekday: 'long' }) : ''
 }
 
-function AnimeCard({ anime }) {
+function requestAnilistIncreaseProgressByOne(anime, session, setChanged) {
+  const { accessToken } = session;
+
+  fetch(`https://graphql.anilist.co`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      query: `
+      mutation ($mediaId: Int, $progress: Int) {
+        SaveMediaListEntry (mediaId: $mediaId, progress: $progress) {
+          id
+          progress
+        }
+      }
+    `, variables: { mediaId: anime.media.id, progress: anime.progress + 1 }
+    }),
+  })
+    .then(r => r.json())
+    .then(data => setChanged(c => c + 1))
+    .catch(err => console.error(err))
+}
+
+
+
+function AnimeCard({ anime, session, setChanged }) {
   const timeUntilAiring = anime.media.nextAiringEpisode?.timeUntilAiring
   const timeUntilAiringToDaysHoursAndMinutes = (timeUntilAiring) => {
     let days = Math.floor(timeUntilAiring / 86400)
@@ -118,7 +148,14 @@ function AnimeCard({ anime }) {
   const airingDayString = getAiringDay(anime)
 
   return (
-    <div className="w-full h-full aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
+    <div className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
+      {episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-25 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity">
+        <button
+          onClick={() => requestAnilistIncreaseProgressByOne(anime, session, setChanged)}
+          className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
+          +1
+        </button>
+      </div>}
       <div className="w-full h-1/2 relative">
         <img src={anime.media.bannerImage || anime.media.coverImage.extraLarge} alt={anime.media.title.romaji} className="w-full h-full object-cover brightness-50 absolute" />
       </div>
@@ -165,7 +202,7 @@ function getTotalBehind(list) {
   return list.reduce((acc, anime) => acc + getEpisodesBehind(anime), 0)
 }
 
-function AnimeList({ list, filterFunction, title, className }) {
+function AnimeList({ list, filterFunction, title, className, session, setChanged }) {
   const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
   return (
     <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
@@ -180,7 +217,7 @@ function AnimeList({ list, filterFunction, title, className }) {
           gap: "1rem"
         }}>
         {newList.length > 0 ? newList.map((item, i) => (
-          <AnimeCard anime={item} key={i} />
+          <AnimeCard session={session} setChanged={setChanged} anime={item} key={i} />
         )) : <div className="text-white text-opacity-50">wtf...</div>}
       </div>
     </div>
@@ -192,7 +229,8 @@ export default function Home() {
   const { data: session, status } = useSession()
   const [username, setUsername] = useState(session?.user.name || '')
   const [list, setList] = useState([])
-  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username])
+  const [changed, setChanged] = useState(0)
+  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username, changed])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
@@ -202,11 +240,11 @@ export default function Home() {
   return (
     <main className="">
       <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
-        <AnimeList list={list} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="pt-20" />
+        <AnimeList session={session} list={list} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="pt-20" />
       </div>
       {
         weekDaysStartingWithToday.map((day, i) => (
-          <AnimeList list={list} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
+          <AnimeList session={session} list={list} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
         ))
       }
     </main>

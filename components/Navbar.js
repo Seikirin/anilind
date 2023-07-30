@@ -1,6 +1,7 @@
 'use client';
 
 import { signIn, signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
 function UserComponent({ session }) {
   const image = session?.user.image;
@@ -8,7 +9,7 @@ function UserComponent({ session }) {
   const id = session?.user.id;
 
   return (
-    <div className={`h-full ${!session && "w-full"} flex justify-center items-center gap-2 p-2 px-8`}>
+    <div className={`h-full ${!session && "w-full"} flex justify-center items-center gap-4 p-2 px-8`}>
       {session ?
         <>
           <button
@@ -35,8 +36,25 @@ function UserComponent({ session }) {
 
 
 export function Navbar({ session }) {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    let lastScroll = 0;
+    const handleScroll = () => {
+      const currentScroll = window.scrollY;
+      if (currentScroll > 0 && lastScroll <= currentScroll) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+      lastScroll = currentScroll;
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <nav className={`w-full fixed ${session ? "h-12" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl bg-opacity-80`}>
+    <nav className={`${isScrolled ? "-translate-y-full" : ""} w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300`}>
       <UserComponent session={session} />
     </nav>
   );
