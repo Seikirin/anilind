@@ -27,7 +27,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="en">
-      <body className={poppins.className + ` bg-anilist-50`}>
+      <body className={poppins.className + ` bg-anilist-100`}>
         <Head>
 
         </Head>

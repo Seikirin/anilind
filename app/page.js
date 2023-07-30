@@ -238,7 +238,7 @@ export default function Home() {
     return <div className="absolute inset-0 text-white flex justify-center items-center">Loading...</div>
 
   return (
-    <main className="">
+    <main className="bg-anilist-50">
       <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
         <AnimeList session={session} list={list} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="pt-20" />
       </div>
