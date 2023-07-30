@@ -82,7 +82,12 @@ function getAnilistUserWatchingList(user) {
 }
 
 function getEpisodesBehind(anime) {
-  return anime.media.nextAiringEpisode?.episode - 1 - anime.progress
+  if (!anime.media.nextAiringEpisode && anime.media.episodes)
+    return anime.media.episodes - anime.progress
+  else if (anime.media.nextAiringEpisode)
+    return anime.media.nextAiringEpisode?.episode - 1 - anime.progress
+  else
+    return 0;
 }
 
 function getPercentUntilAiring(anime) {
@@ -185,9 +190,9 @@ function AnimeList({ list, filterFunction, title, className }) {
 
 export default function Home() {
   const { data: session, status } = useSession()
-  const [username, setUsername] = useState(session?.user.name || 'seikirin')
+  const [username, setUsername] = useState(session?.user.name || '')
   const [list, setList] = useState([])
-  const request = useMemo(() => getAnilistUserWatchingList(username).then(setList), [username])
+  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>

@@ -8,7 +8,7 @@ function UserComponent({ session }) {
   const id = session?.user.id;
 
   return (
-    <div className="h-full flex justify-center items-center gap-2 p-2 px-8">
+    <div className={`h-full ${!session && "w-full"} flex justify-center items-center gap-2 p-2 px-8`}>
       {session ?
         <>
           <button
@@ -24,7 +24,7 @@ function UserComponent({ session }) {
         </> :
         <button
           onClick={() => signIn("AniListProvider")}
-          className='bg-anilist-400 text-white  p-1 px-2 text-xs rounded-md hover:bg-opacity-80 transition-colors duration-300 flex  gap-2'>
+          className='bg-anilist-400 text-white  p-1 px-2 text-xs rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2'>
           <img className={"h-4 aspect-square rounded-full"} src='https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg' />
           Sign In
         </button>
@@ -36,7 +36,7 @@ function UserComponent({ session }) {
 
 export function Navbar({ session }) {
   return (
-    <nav className='w-full fixed h-12 bg-anilist-100 flex justify-between z-10 shadow-xl bg-opacity-80'>
+    <nav className={`w-full fixed ${session ? "h-12" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl bg-opacity-80`}>
       <UserComponent session={session} />
     </nav>
   );
