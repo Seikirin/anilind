@@ -24,8 +24,8 @@ function UserComponent({ session }) {
         </> :
         <button
           onClick={() => signIn("AniListProvider")}
-          className='bg-anilist-400 text-white  p-1 px-2 text-xs rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2'>
-          <img className={"h-4 aspect-square rounded-full"} src='https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg' />
+          className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
+          <img className={"h-5 aspect-square rounded-full"} src='https://upload.wikimedia.org/wikipedia/commons/6/61/AniList_logo.svg' />
           Sign In
         </button>
       }
