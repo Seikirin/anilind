@@ -161,8 +161,7 @@ function getTotalBehind(list) {
 }
 
 function AnimeList({ list, filterFunction, title, className }) {
-  const newList = list.filter(filterFunction);
-
+  const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
   return (
     <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
       <div className="w-full text-xl font-semibold text-white">
@@ -185,18 +184,20 @@ function AnimeList({ list, filterFunction, title, className }) {
 
 
 export default function Home() {
-  const [username, setUsername] = useState('seikirin')
+  const { data: session, status } = useSession()
+  const [username, setUsername] = useState(session?.user.name || 'seikirin')
   const [list, setList] = useState([])
   const request = useMemo(() => getAnilistUserWatchingList(username).then(setList), [username])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
+  if (!session)
+    return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
   if (!list)
-    return <div className="p-6 w-screen h-screen flex justify-center items-center">Loading...</div>
+    return <div className="absolute inset-0 text-white flex justify-center items-center">Loading...</div>
 
   return (
     <main className="">
-      <button onClick={() => signIn()} className="fixed top-0 right-0 p-4 text-white bg-anilist-400">Sign in</button>
       <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
-        <AnimeList list={list} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="" />
+        <AnimeList list={list} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="pt-20" />
       </div>
       {
         weekDaysStartingWithToday.map((day, i) => (

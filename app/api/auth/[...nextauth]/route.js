@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import axios from "axios"
+import GithubProvider from "next-auth/providers/github"
 
 const authOptions = {
   providers: [
@@ -73,6 +74,6 @@ const authOptions = {
 }
 
 // https://anilist.co/api/v2/oauth/authorize?client_id=11346&scope=&response_type=code&redirect_uri=https%3A%2F%2Fani-calendar.vercel.app%2Fapi%2Fauth%2Fcallback%2FAniListProvider&state=eOJKdrM_mFqKzO4Oe2Y3MJ3f7Rm9PuIr6-uUrLAJX_4
-
+// https://anilist.co/api/v2/oauth/authorize?client_id=13762&scope=&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback%2FAniListProvider&state=I6DuAE_uncW8lll4lTc81JLJOD3mosjxCmlvv1-FR6A
 const handler = NextAuth(authOptions)
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, authOptions };
