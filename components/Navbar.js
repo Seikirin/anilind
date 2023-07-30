@@ -54,7 +54,7 @@ export function Navbar({ session }) {
   }, []);
 
   return (
-    <nav className={`${isScrolled ? "translate-y-[-150%]" : ""} w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300`}>
+    <nav className={`${isScrolled ? "translate-y-[-200%]" : ""} w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300`}>
       <div className='absolute inset-0 bg-anilist-100 translate-y-[-99%]'></div>
       <UserComponent session={session} />
     </nav>
