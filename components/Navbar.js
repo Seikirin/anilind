@@ -1,7 +1,8 @@
 'use client';
 
+import DataContext from '@/contexts/DataContext';
 import { signIn, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 function UserComponent({ session }) {
   const image = session?.user.image;
@@ -9,7 +10,7 @@ function UserComponent({ session }) {
   const id = session?.user.id;
 
   return (
-    <div className={`h-full ${!session && "w-full"} flex justify-center items-center gap-4 p-2 px-8`}>
+    <div className={`h-full ${!session && "w-full"} flex justify-center items-center gap-4 py-2`}>
       {session ?
         <>
           <button
@@ -34,21 +35,24 @@ function UserComponent({ session }) {
   )
 }
 
-
 export function Navbar({ session }) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const { setChanged, dataState } = useContext(DataContext)
+  const [translateY, setTranslateY] = useState(0);
 
   useEffect(() => {
     let lastScroll = 0;
+    const scale = 2
     const handleScroll = () => {
       const currentScroll = window.scrollY;
-      if (currentScroll > 0 && lastScroll <= currentScroll) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      const difference = currentScroll - lastScroll;
+      if (currentScroll <= 0)
+        setTranslateY(0)
+      else
+        setTranslateY(t => Math.min(0, Math.max(-100, t + (difference < 0 ? scale : -scale))))
       lastScroll = currentScroll;
     }
+    // handleScroll as soon as scrolling starts
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -58,8 +62,17 @@ export function Navbar({ session }) {
       <div className='w-full h-16 -translate-y-full bg-anilist-100 z-20 fixed'>
 
       </div>
-      <nav className={`${isScrolled ? "translate-y-[-200%]" : ""} w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300`}>
+      <nav className={`w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300 items-center px-8`}
+        style={{ transform: `translateY(${translateY}px)` }}
+        >
         <UserComponent session={session} />
+        <div>
+          <button
+            onClick={() => dataState != "loading" && setChanged(c => c + 1)}
+            className={`${dataState != "error" ? "bg-anilist-400" : "bg-red-600"}  text-white transition-all rounded-full duration-300 flex gap-2 justify-center items-center p-2 ${dataState == "loading" ? "animate-spin bg-opacity-50" : "hover:bg-opacity-80 "}`}>
+            <img src='/refresh.png' alt='refresh' className='h-5 aspect-square invert' />
+          </button>
+        </div>
       </nav>
     </>
   );

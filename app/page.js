@@ -1,10 +1,14 @@
 'use client';
-import { useEffect, useMemo } from "react"
+import { useContext, useEffect, useMemo } from "react"
 import { useState } from "react"
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { getToken } from "next-auth/jwt";
+import DataContext from "@/contexts/DataContext";
 
-function getAnilistUserWatchingList(user) {
+function getAnilistUserWatchingList(user, setDataState) {
+
+  setDataState("loading")
+
   return fetch(`https://graphql.anilist.co`, {
     method: 'POST',
     headers: {
@@ -79,8 +83,14 @@ function getAnilistUserWatchingList(user) {
     }),
   })
     .then(r => r.json())
-    .then(data => data.data.MediaListCollection.lists[0].entries)
-    .catch(err => console.error(err))
+    .then(data => {
+      setDataState("loaded")
+      return data.data.MediaListCollection.lists[0].entries
+    })
+    .catch(err => {
+      setDataState("error")
+      console.error(err)
+    })
 }
 
 function getEpisodesBehind(anime) {
@@ -204,6 +214,7 @@ function getTotalBehind(list) {
 
 function AnimeList({ list, filterFunction, title, className, session, setChanged }) {
   const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
+
   return (
     <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
       <div className="w-full text-xl font-semibold text-white">
@@ -226,12 +237,16 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
 
 
 export default function Home() {
+  const { changed, setChanged, setDataState } = useContext(DataContext)
   const { data: session, status } = useSession()
   const [username, setUsername] = useState(session?.user.name || '')
   const [list, setList] = useState([])
-  const [changed, setChanged] = useState(0)
-  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username, changed])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
+
+  useEffect(() => {
+    username.length > 0 && getAnilistUserWatchingList(username, setDataState).then((newList) => newList ? setList([...newList].filter(anime => anime.media.nextAiringEpisode)) : setList([]))
+  }, [username, changed])
+  
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
   if (!list)

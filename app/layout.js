@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { Navbar } from '../components/Navbar';
 import Head from 'next/head';
+import ContextProvider from '@/components/ContextProvider';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -28,13 +29,12 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={poppins.className + ` bg-anilist-100`}>
-        <Head>
-
-        </Head>
-        <Navbar session={session} />
-        <Provider session={session}>
-          {children}
-        </Provider>
+        <ContextProvider>
+          <Navbar session={session} />
+          <Provider session={session}>
+              {children}
+          </Provider>
+        </ContextProvider>
       </body>
     </html>
   )
