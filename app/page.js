@@ -230,7 +230,7 @@ export default function Home() {
   const [username, setUsername] = useState(session?.user.name || '')
   const [list, setList] = useState([])
   const [changed, setChanged] = useState(0)
-  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username, changed])
+  const request = useMemo(() => username.length > 0 && getAnilistUserWatchingList(username).then((newList) => newList && setList([...newList].filter(anime => anime.media.nextAiringEpisode))), [username, changed])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
