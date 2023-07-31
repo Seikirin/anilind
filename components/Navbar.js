@@ -41,18 +41,31 @@ export function Navbar({ session }) {
   const [translateY, setTranslateY] = useState(0);
 
   useEffect(() => {
+    let debounce = false;
     let lastScroll = 0;
     const scale = 2
     const handleScroll = () => {
-      const currentScroll = window.scrollY;
-      const difference = currentScroll - lastScroll;
-      if (currentScroll <= 0)
-        setTranslateY(0)
-      else
-        setTranslateY(t => Math.min(0, Math.max(-100, t + (difference < 0 ? scale : -scale))))
-      lastScroll = currentScroll;
+        if (lastScroll > window.scrollY || window.scrollY <= 0) {
+          setTranslateY(0)
+        }
+        else {
+          setTranslateY(-100);
+        }
+        lastScroll = window.scrollY;
     }
-    // handleScroll as soon as scrolling starts
+    //   const currentScroll = window.scrollY;
+    //   const difference = currentScroll - lastScroll;
+    //   if (currentScroll <= 0)
+    //     setTranslateY(0)
+    //   else if (!debounce)
+    //     setTranslateY(t => Math.min(0, Math.max(-100, t - (difference))))
+    //   if (!debounce) {
+    //     debounce = true;
+    //     setTimeout(() => debounce = false, 100);
+    //   }
+    //   lastScroll = currentScroll;
+    // }
+    // // handleScroll as soon as scrolling starts
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -62,17 +75,17 @@ export function Navbar({ session }) {
       <div className='w-full h-16 -translate-y-full bg-anilist-100 z-20 fixed'>
 
       </div>
-      <nav className={`w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between z-10 shadow-xl transition-transform duration-300 items-center px-8`}
+      <nav className={`w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between transition-transform z-10 shadow-xl duration-500 items-center px-8`}
         style={{ transform: `translateY(${translateY}px)` }}
-        >
+      >
         <UserComponent session={session} />
-        <div>
+        {session && <div>
           <button
             onClick={() => dataState != "loading" && setChanged(c => c + 1)}
             className={`${dataState != "error" ? "bg-anilist-400" : "bg-red-600"}  text-white transition-all rounded-full duration-300 flex gap-2 justify-center items-center p-2 ${dataState == "loading" ? "animate-spin bg-opacity-50" : "hover:bg-opacity-80 "}`}>
             <img src='/refresh.png' alt='refresh' className='h-5 aspect-square invert' />
           </button>
-        </div>
+        </div>}
       </nav>
     </>
   );

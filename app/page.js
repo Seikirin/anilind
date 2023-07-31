@@ -239,7 +239,7 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
 export default function Home() {
   const { changed, setChanged, setDataState } = useContext(DataContext)
   const { data: session, status } = useSession()
-  const [username, setUsername] = useState(session?.user.name || '')
+  const [username, setUsername] = useState(session?.user.name || 'seikirin')
   const [list, setList] = useState([])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
 
