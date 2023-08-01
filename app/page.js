@@ -142,6 +142,7 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged) {
 
 
 function AnimeCard({ anime, session, setChanged }) {
+  const [opacity, setOpacity] = useState(0)
   const timeUntilAiring = anime.media.nextAiringEpisode?.timeUntilAiring
   const timeUntilAiringToDaysHoursAndMinutes = (timeUntilAiring) => {
     let days = Math.floor(timeUntilAiring / 86400)
@@ -157,8 +158,15 @@ function AnimeCard({ anime, session, setChanged }) {
   const percentUntilAiring = getPercentUntilAiring(anime)
   const airingDayString = getAiringDay(anime)
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setOpacity(1), 100)
+    return () => clearTimeout(timeout)
+  }, [])
+
   return (
-    <div className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col">
+    <div 
+      style={{ opacity: opacity }}
+      className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col transition-opacity duration-500">
       {episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={() => requestAnilistIncreaseProgressByOne(anime, session, setChanged)}
@@ -212,8 +220,42 @@ function getTotalBehind(list) {
   return list.reduce((acc, anime) => acc + getEpisodesBehind(anime), 0)
 }
 
-function AnimeList({ list, filterFunction, title, className, session, setChanged }) {
+function LoadingCard() {
+  return (
+    <div className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col animate-pulse">
+      <div className="w-full h-1/2 relative">
+        <div className="w-full h-full object-cover brightness-50 absolute bg-anilist-400 "></div>
+      </div>
+      <div className="w-full h-1/2 bg-anilist-100 ">
+      </div>
+      <div className="absolute inset-0 p-0 md:p-2 flex items-end  -translate-y-0.5">
+        <div className="w-2/5 md:1/3 h-full flex items-center justify-center py-0.5">
+          <div className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto md:rounded object-cover bg-anilist-400 "></div>
+        </div>
+        <div className="w-3/5 md:2/3 h-1/2 p-2 flex flex-col">
+          <div className="truncate text-opacity-90 text-white mt-0.5 ">
+          </div>
+          <div className="text-xs text-opacity-50 text-white ">
+          </div>
+          <div className="flex justify-between text-anilist-200 flex-1">
+            <span className="text-xs mr-1 text-opacity-75 text-anilist-400 ">
+            </span>
+            <span className="mt-auto ">
+              </span>
+          </div>
+        </div>
+      </div>
+      <div className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-400 opacity-50 w-full `}>
+      </div>
+      <div style={{ width: "0%" }} className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-200 w-full self-start `}></div>
+    </div>
+  )
+}
+
+
+function AnimeList({ list, filterFunction, title, className, session, setChanged, dataState }) {
   const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
+  const arrayOfLoadingCards = useMemo(() => Array.from({ length: 5 + Math.random() * 10}, (_, i) => <LoadingCard key={i} />), [])
 
   return (
     <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
@@ -227,9 +269,22 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
           gridTemplateColumns: "repeat(auto-fill, minmax(15rem, 1fr))",
           gap: "1rem"
         }}>
-        {newList.length > 0 ? newList.map((item, i) => (
-          <AnimeCard session={session} setChanged={setChanged} anime={item} key={i} />
-        )) : <div className="text-white text-opacity-50">wtf...</div>}
+        {
+          newList.length > 0 ?
+          newList.map((item, i) => (<AnimeCard session={session} setChanged={setChanged} anime={item} key={i} />)) :
+          dataState == "loading" ?
+          <>
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          </> :
+          <div className="text-white text-opacity-50">wtf...</div>
+        }
       </div>
     </div>
   )
@@ -237,29 +292,31 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
 
 
 export default function Home() {
-  const { changed, setChanged, setDataState } = useContext(DataContext)
+  const { changed, setChanged, setDataState, dataState } = useContext(DataContext)
   const { data: session, status } = useSession()
   const [username, setUsername] = useState(session?.user.name || 'seikirin')
   const [list, setList] = useState([])
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
 
   useEffect(() => {
-    username.length > 0 && getAnilistUserWatchingList(username, setDataState).then((newList) => newList ? setList([...newList].filter(anime => anime.media.nextAiringEpisode)) : setList([]))
+    if (username.length > 0)
+    {
+      setList([])
+      getAnilistUserWatchingList(username, setDataState).then((newList) => newList ? setList([...newList].filter(anime => anime.media.nextAiringEpisode)) : setList([]))
+    }
   }, [username, changed])
   
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
-  if (!list)
-    return <div className="absolute inset-0 text-white flex justify-center items-center">Loading...</div>
 
   return (
     <main className="bg-anilist-50">
       <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
-        <AnimeList session={session} list={list} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={`${getTotalBehind(list)} episodes behind`} className="pt-20" />
+        <AnimeList session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
       </div>
       {
         weekDaysStartingWithToday.map((day, i) => (
-          <AnimeList session={session} list={list} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
+          <AnimeList session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
         ))
       }
     </main>
