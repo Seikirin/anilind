@@ -1,5 +1,5 @@
 'use client';
-import { useContext, useEffect, useMemo } from "react"
+import { useContext, useEffect, useMemo, useRef } from "react"
 import { useState } from "react"
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { getToken } from "next-auth/jwt";
@@ -113,8 +113,10 @@ function getAiringDay(anime) {
   return airingDay ? new Date(airingDay * 1000).toLocaleDateString('en-US', { weekday: 'long' }) : ''
 }
 
-function requestAnilistIncreaseProgressByOne(anime, session, setChanged) {
+function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList) {
   const { accessToken } = session;
+
+  console.log("Changing progress of", anime.media.title.romaji, "to", anime.progress + 1);
 
   fetch(`https://graphql.anilist.co`, {
     method: 'POST',
@@ -135,14 +137,23 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged) {
     }),
   })
     .then(r => r.json())
-    .then(data => setChanged(c => c + 1))
+    .then(data => {
+      setList((list) => {
+        const newList = [...list]
+        const item = newList.find(item => item.media.id === anime.media.id)
+        item.progress = data.data.SaveMediaListEntry.progress
+        return newList
+      })
+    })
     .catch(err => console.error(err))
 }
 
 
 
-function AnimeCard({ anime, session, setChanged }) {
+function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   const [opacity, setOpacity] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+  const anime = useMemo(() => list.find(item => item.media.id === mediaId), [list])
   const timeUntilAiring = anime.media.nextAiringEpisode?.timeUntilAiring
   const timeUntilAiringToDaysHoursAndMinutes = (timeUntilAiring) => {
     let days = Math.floor(timeUntilAiring / 86400)
@@ -157,52 +168,139 @@ function AnimeCard({ anime, session, setChanged }) {
   const episodesBehind = getEpisodesBehind(anime)
   const percentUntilAiring = getPercentUntilAiring(anime)
   const airingDayString = getAiringDay(anime)
+  const ref = useRef(null)
+  const addRef = useRef(null)
+  const innerRef = useRef(null)
+  const decreaseRef = useRef(null)
+  const addTextRef = useRef(null)
 
   useEffect(() => {
     const timeout = setTimeout(() => setOpacity(1), 100)
-    return () => clearTimeout(timeout)
+
+    const handleResize = () => {
+      if (window.innerWidth < 640)
+        setIsMobile(true)
+      else
+        setIsMobile(false)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+
+    const card = ref.current
+    let startX = undefined
+    let offsetX = 0
+    let startTranslateX = 0
+    let translateX = 0
+    const updateRefs = () => {
+      card.style.transform = `translateX(${translateX}px)`
+      innerRef.current.style.transform = `scale(${1 - Math.abs(translateX) / (card.clientWidth * 4)})`
+      addRef.current.style.transform = `scale(${0.75 + Math.abs(translateX) / (card.clientWidth * 2)}) translate(${150 - (Math.abs(translateX) / (card.clientWidth * 0.4)) * 100}%)`
+      addTextRef.current.style.opacity = `${Math.abs(translateX) / (card.clientWidth * 0.5)}`
+      addTextRef.current.style.transform = `translateX(${Math.abs(translateX) / (card.clientWidth * 0.75) * 100}%)`
+    }
+    const handleTouchMove = (e) => {
+      const touchX = e.touches[0].clientX
+      if (startX === undefined)
+        startX = touchX, startTranslateX = translateX
+      let diff = touchX - startX
+      // can only drag to the left and if there are episodes behind
+      if (translateX + diff > 0 || episodesBehind <= 0)
+        return;
+      let delta = (startTranslateX + diff) - translateX
+      if (
+        (translateX < 0 && delta < 0)
+        || (translateX > 0 && delta > 0)) {
+        delta = (1 - Math.abs(translateX) / (card.clientWidth / 2)) * delta
+      }
+      console.log(translateX, delta, diff)
+      translateX += delta
+      updateRefs();
+      e.preventDefault()
+    }
+    const handleTouchEnd = (e) => {
+      startX = undefined
+      const speed = 100
+      card.style.transition = `transform ${speed}ms ease-out`
+      let o_translateX = translateX
+      translateX = 0
+      updateRefs()
+      setTimeout(() => {
+        card.style.transition = ''
+        if (o_translateX < -card.clientWidth * 0.35)
+          requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList)
+      }
+        , speed)
+      e.preventDefault()
+    }
+    card.addEventListener('touchmove', handleTouchMove)
+    card.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener('resize', handleResize)
+      card.removeEventListener('touchmove', handleTouchMove)
+      card.removeEventListener('touchend', handleTouchEnd)
+    }
   }, [])
 
   return (
-    <div 
+    <div
+      ref={ref}
       style={{ opacity: opacity }}
-      className="w-full h-full aspect-[10/5] xs:aspect-[10/7] flex items-end relative rounded overflow-hidden shadow-sm flex-col transition-opacity duration-500">
-      {episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+      className="w-full h-full aspect-[10/5] xs:aspect-[10/7] relative">
+
+      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
-          onClick={() => requestAnilistIncreaseProgressByOne(anime, session, setChanged)}
+          onClick={() => { }}
           className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
           +1
         </button>
       </div>}
-      <div className="w-full h-1/2 relative">
-        <img src={anime.media.bannerImage || anime.media.coverImage.extraLarge} alt={anime.media.title.romaji} className="w-full h-full object-cover brightness-50 absolute" />
-      </div>
-      <div className="w-full h-1/2 bg-anilist-100">
-      </div>
-      <div className="absolute inset-0 p-0 md:p-2 flex items-end  -translate-y-0.5">
-        <div className="w-2/5 md:1/3 h-full flex items-center justify-center py-0.5">
-          <img src={anime.media.coverImage.large} alt={anime.media.title.romaji} className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto md:rounded object-cover" />
+      {isMobile && <div
+        ref={addRef}
+        style={{ transform: `translateX(150%)` }}
+        className="absolute inset-0 w-[150%] scale-150 from-anilist-400 to-transparent bg-gradient-to-l z-10 flex justify-center items-center"
+      >
+        <div
+          ref={addTextRef}
+          className="text-white flex justify-center items-center ">
+          Watched
         </div>
-        <div className="w-3/5 md:2/3 h-1/2 p-2 flex flex-col">
-          <div className="truncate text-opacity-90 text-white mt-0.5">
-            {anime.media.title.english || anime.media.title.romaji}
-          </div>
-          <div className="text-xs text-opacity-50 text-white">
-            {timeUntilAiringStr}
-          </div>
-          <div className="flex justify-between text-anilist-200 flex-1">
-            {episodesBehind > 0 ? <span className="text-xs mr-1 text-opacity-75 text-anilist-400">
-              {episodesBehind + " behind"}
-            </span> : <span className="text-white text-xs text-opacity-25">Caught up</span>}
-            <span className="mt-auto">
-              {anime.progress}
-              {anime.media?.episodes > 0 && `/${anime.media.episodes}`}</span>
-          </div>
-        </div>
-      </div>
-      {episodesBehind > 0 && <div className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-400 opacity-50 w-full`}>
       </div>}
-      {<div style={{ width: percentUntilAiring + "%" }} className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-200 w-full self-start`}></div>}
+
+      <div
+        ref={innerRef}
+        className="w-full h-full flex items-end relative rounded overflow-hidden shadow-sm flex-col">
+        <div className="w-full h-1/2 relative">
+          <img src={anime.media.bannerImage || anime.media.coverImage.extraLarge} alt={anime.media.title.romaji} className="w-full h-full object-cover brightness-50 absolute" />
+        </div>
+        <div className="w-full h-1/2 bg-anilist-100">
+        </div>
+        <div className="absolute inset-0 p-0 md:p-2 flex items-end  -translate-y-0.5">
+          <div className="w-2/5 md:1/3 h-full flex items-center justify-center py-0.5">
+            <img src={anime.media.coverImage.large} alt={anime.media.title.romaji} className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto md:rounded object-cover" />
+          </div>
+          <div className="w-3/5 md:2/3 h-1/2 p-2 flex flex-col">
+            <div className="truncate text-opacity-90 text-white mt-0.5">
+              {anime.media.title.english || anime.media.title.romaji}
+            </div>
+            <div className="text-xs text-opacity-50 text-white">
+              {timeUntilAiringStr}
+            </div>
+            <div className="flex justify-between text-anilist-200 flex-1">
+              {episodesBehind > 0 ? <span className="text-xs mr-1 text-opacity-75 text-anilist-400">
+                {episodesBehind + " behind"}
+              </span> : <span className="text-white text-xs text-opacity-25">Caught up</span>}
+              <span className="mt-auto">
+                {anime.progress}
+                {anime.media?.episodes > 0 && `/${anime.media.episodes}`}</span>
+            </div>
+          </div>
+        </div>
+        {episodesBehind > 0 && <div className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-400 opacity-50 w-full`}>
+        </div>}
+        {<div style={{ width: percentUntilAiring + "%" }} className={`absolute h-1 bottom-0 overflow-hidden bg-anilist-200 w-full self-start`}></div>}
+      </div>
     </div>
   )
 }
@@ -241,7 +339,7 @@ function LoadingCard() {
             <span className="text-xs mr-1 text-opacity-75 text-anilist-400 ">
             </span>
             <span className="mt-auto ">
-              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -252,13 +350,25 @@ function LoadingCard() {
   )
 }
 
-
-function AnimeList({ list, filterFunction, title, className, session, setChanged, dataState }) {
-  const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
-  const arrayOfLoadingCards = useMemo(() => Array.from({ length: 5 + Math.random() * 10}, (_, i) => <LoadingCard key={i} />), [])
+function LoadingCards() {
+  const randomNumber = Math.random() * 10
 
   return (
-    <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
+    <>
+      {
+        Array.from({ length: 5 + randomNumber }, (_, i) => <LoadingCard key={i} />)
+      }
+    </>
+  )
+}
+
+
+function AnimeList({ list, filterFunction, title, className, session, setChanged, dataState, setList }) {
+  const newList = list.filter(filterFunction).sort((a, b) => a.media.nextAiringEpisode.timeUntilAiring - b.media.nextAiringEpisode.timeUntilAiring)
+  const arrayOfLoadingCards = useMemo(() => Array.from({ length: 5 + Math.random() * 10 }, (_, i) => <LoadingCard key={i} />), [])
+
+  return (
+    <div className={`flex flex-wrap gap-4 p-8 ${className} overflow-hidden`}>
       <div className="w-full text-xl font-semibold text-white">
         {title}
       </div>
@@ -271,19 +381,20 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
         }}>
         {
           newList.length > 0 ?
-          newList.map((item, i) => (<AnimeCard session={session} setChanged={setChanged} anime={item} key={i} />)) :
-          dataState == "loading" ?
-          <>
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          <LoadingCard />
-          </> :
-          <div className="text-white text-opacity-50">wtf...</div>
+            newList.map((item, i) => (
+              <AnimeCard
+                list={list} session={session} setChanged={setChanged}
+                mediaId={item.media.id}
+                key={item.media.id} setList={setList}
+              />
+            )) :
+            dataState == "loading" ?
+              <>
+                <LoadingCard />
+                <LoadingCard />
+                <LoadingCard />
+              </> :
+              <div className="text-white text-opacity-50">wtf...</div>
         }
       </div>
     </div>
@@ -299,24 +410,23 @@ export default function Home() {
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
 
   useEffect(() => {
-    if (username.length > 0)
-    {
+    if (username.length > 0) {
       setList([])
       getAnilistUserWatchingList(username, setDataState).then((newList) => newList ? setList([...newList].filter(anime => anime.media.nextAiringEpisode)) : setList([]))
     }
   }, [username, changed])
-  
+
   if (!session)
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
 
   return (
     <main className="bg-anilist-50">
       <div className="bg-anilist-300 rounded shadow-lg md:min-h-screen">
-        <AnimeList session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
+        <AnimeList setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
       </div>
       {
         weekDaysStartingWithToday.map((day, i) => (
-          <AnimeList session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
+          <AnimeList setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
         ))
       }
     </main>
