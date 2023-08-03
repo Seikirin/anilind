@@ -176,15 +176,17 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
 
   useEffect(() => {
     const timeout = setTimeout(() => setOpacity(1), 100)
+    let mutableIsMobile = false
 
     const handleResize = () => {
-      if (window.innerWidth < 560)
-        setIsMobile(true)
-      else
-        setIsMobile(false)
+      const hasTouchScreen = window.matchMedia("(hover: none)").matches
+      const newValue  = window.innerWidth < 560 && hasTouchScreen
+      setIsMobile(newValue)
+      mutableIsMobile = newValue
     }
     handleResize()
     window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
 
     const card = ref.current
     let startX = undefined
@@ -196,6 +198,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       card.style.transform = `translateX(${translateX}px)`
       innerRef.current.style.transform = `scale(${1 - Math.abs(translateX) / (card.clientWidth * 4)})`
       addRef.current.style.transform = `scale(${0.75 + Math.abs(translateX) / (card.clientWidth * 2)}) translate(${500 - (Math.abs(translateX) / (card.clientWidth * 0.4)) * 100}%)`
+      addRef.current.style.opacity = `${Math.abs(translateX) / (card.clientWidth * 0.5)}`
       addTextRef.current.style.opacity = `${Math.abs(translateX) / (card.clientWidth * 0.5)}`
       addTextRef.current.style.transform = `translateX(${Math.abs(translateX) / (card.clientWidth * -0.65) * 100}vw)`
     }
@@ -208,15 +211,16 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
         startY = touchY
       let diff = touchX - startX;
       let diffY = touchY - startY;
-      if (translateX + diff > 0 || episodesBehind <= 0)
+      if (translateX + diff > 0 || episodesBehind <= 0 || mutableIsMobile == false)
         return;
       let delta = (startTranslateX + diff) - translateX
       if (
         (translateX < 0 && delta < 0)
         || (translateX > 0 && delta > 0)) {
-        delta = (1 - Math.abs(translateX) / (card.clientWidth / 2)) * delta
-      }
+          delta = (1 - Math.abs(translateX) / (card.clientWidth / 2)) * delta
+      }  
       translateX += delta
+      translateX = Math.min(0, translateX)
       updateRefs();
       e.preventDefault()
     }
@@ -227,6 +231,8 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       card.style.transition = `transform ${speed}ms ease-out`
       let o_translateX = translateX
       translateX = 0
+      if (episodesBehind <= 0 || mutableIsMobile == false)
+        return;
       updateRefs()
       setTimeout(() => {
         card.style.transition = ''
@@ -242,6 +248,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
     return () => {
       clearTimeout(timeout)
       window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
       card.removeEventListener('touchmove', handleTouchMove)
       card.removeEventListener('touchend', handleTouchEnd)
     }
@@ -264,7 +271,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
         style={{
           transform: `translateX(500%)`,
           boxShadow: `0 0 300px 100px rgb(61,180,242)`,
-      
+          opacity: 0,
       }}
         className="absolute h-full aspect-square scale-150 bg-transparent bg-gradient-to-l z-10 flex justify-center items-center rounded-full"
       >
