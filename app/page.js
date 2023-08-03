@@ -5,7 +5,8 @@ import { signIn, signOut, useSession } from 'next-auth/react'
 import { getToken } from "next-auth/jwt";
 import DataContext from "@/contexts/DataContext";
 
-function getAnilistUserWatchingList(user, setDataState) {
+function getAnilistUserWatchingList(user, setDataState, session) {
+  const { accessToken } = session;
 
   setDataState("loading")
 
@@ -14,6 +15,7 @@ function getAnilistUserWatchingList(user, setDataState) {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
       query: `
@@ -90,6 +92,7 @@ function getAnilistUserWatchingList(user, setDataState) {
     .catch(err => {
       setDataState("error")
       console.error(err)
+      return []
     })
 }
 
@@ -409,7 +412,7 @@ export default function Home() {
   useEffect(() => {
     if (username.length > 0) {
       setList([])
-      getAnilistUserWatchingList(username, setDataState).then((newList) => {
+      getAnilistUserWatchingList(username, setDataState, session).then((newList) => {
         const toReturn = newList ? setList([...newList].filter(anime => anime.media.nextAiringEpisode)) : setList([])
         const listOfOnlyBehind = newList.filter(anime => getEpisodesBehind(anime) > 0)
         loadingComponents.current = Array.from({ length: Math.max(listOfOnlyBehind.length, 1) }, (_, i) => <LoadingCard key={i} />)
