@@ -75,7 +75,7 @@ export function Navbar({ session }) {
       <div className='w-full h-16 -translate-y-full bg-anilist-100 z-20 fixed'>
 
       </div>
-      <nav className={`w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between transition-transform z-10 shadow-xl duration-500 items-center px-8`}
+      <nav className={`w-full fixed ${session ? "h-16" : "h-full"} bg-anilist-100 flex justify-between transition-transform z-20 shadow-xl duration-500 items-center px-8`}
         style={{ transform: `translateY(${translateY}px)` }}
       >
         <UserComponent session={session} />

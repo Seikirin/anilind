@@ -188,7 +188,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
 
     const handleResize = () => {
       const hasTouchScreen = window.matchMedia("(hover: none)").matches
-      const newValue  = window.innerWidth < 560 && hasTouchScreen
+      const newValue = window.innerWidth < 560 && hasTouchScreen
       setIsMobile(newValue)
       mutableIsMobile = newValue
     }
@@ -225,29 +225,40 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       if (
         (translateX < 0 && delta < 0)
         || (translateX > 0 && delta > 0)) {
-          delta = (1 - Math.abs(translateX) / (card.clientWidth / 2)) * delta
-      }  
+        delta = (1 - Math.abs(translateX) / (card.clientWidth / 2)) * delta
+      }
       translateX += delta
       translateX = Math.min(0, translateX)
       updateRefs();
       e.preventDefault()
     }
     const handleTouchEnd = (e) => {
+      const fullSwipe = translateX < -card.clientWidth * 0.35
+      const speed = 200
+
       startX = undefined
       startY = undefined
-      const speed = 100
-      card.style.transition = `transform ${speed}ms ease-out`
-      let o_translateX = translateX
       translateX = 0
+
       if (episodesBehind <= 0 || mutableIsMobile == false)
         return;
-      updateRefs()
+      card.style.transition = `transform ${speed}ms ease-out`
+      addRef.current.style.transition = `all ${speed}ms ease-out`
+      if (fullSwipe && getEpisodesBehind(list.find(item => item.media.id === mediaId)) == 1) {
+        setTimeout(() => {
+          card.style.transform = `translateX(-${card.clientWidth * 2}px)`
+          addRef.current.style.transform = `translate(1000%)`
+          addRef.current.style.opacity = 1
+        }, speed * 0.1)
+      }
+      else
+        updateRefs();
+      if (fullSwipe)
+        setTimeout(() => requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList), speed / 2);
       setTimeout(() => {
         card.style.transition = ''
-        if (o_translateX < -card.clientWidth * 0.35)
-          requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList)
-      }
-        , speed)
+        addRef.current.style.transition = ''
+      }, speed)
       e.preventDefault()
     }
     card.addEventListener('touchmove', handleTouchMove)
@@ -280,7 +291,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
           transform: `translateX(500%)`,
           boxShadow: `0 0 300px 100px rgb(61,180,242)`,
           opacity: 0,
-      }}
+        }}
         className="absolute h-full aspect-square scale-150 bg-transparent bg-gradient-to-l z-10 flex justify-center items-center rounded-full"
       >
         <div
@@ -303,12 +314,12 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
             <div className="max-w-full md:aspect-[27/38] h-full w-full md:h-auto md:rounded overflow-hidden relative">
               <img src={anime.media.coverImage.large} alt={anime.media.title.romaji} className="w-full h-full object-cover" />
               {getAiringDay(anime) && <div className="absolute inset-0 top-3/4 bg-black bg-opacity-60 p-1 flex items-center justify-center flex-col">
-                  <div className="text-white text-center text-xs w-full leading-3">
-                    {getAiringDay(anime)}
-                  </div>
-                  <div className="text-white text-center text-opacity-75 text-[0.6rem] w-full leading-[0.6rem]">
-                    {getAiringHourInLocalTimezone(anime)}
-                  </div>
+                <div className="text-white text-center text-xs w-full leading-3">
+                  {getAiringDay(anime)}
+                </div>
+                <div className="text-white text-center text-opacity-75 text-[0.6rem] w-full leading-[0.6rem]">
+                  {getAiringHourInLocalTimezone(anime)}
+                </div>
               </div>}
             </div>
           </div>
@@ -384,10 +395,10 @@ function LoadingCard() {
 
 function AnimeList({ list, filterFunction, title, className, session, setChanged, dataState, setList, loadingComponents }) {
   const newList = list.filter(filterFunction).sort((a, b) => {
-  const aTime = a.media.nextAiringEpisode?.timeUntilAiring;
-  const bTime = b.media.nextAiringEpisode?.timeUntilAiring;
-  return (aTime || Infinity) - (bTime || Infinity) || getEpisodesBehind(a) - getEpisodesBehind(b);
-});
+    const aTime = a.media.nextAiringEpisode?.timeUntilAiring;
+    const bTime = b.media.nextAiringEpisode?.timeUntilAiring;
+    return (aTime || Infinity) - (bTime || Infinity) || getEpisodesBehind(a) - getEpisodesBehind(b);
+  });
 
   return (
     <div className={`flex flex-wrap gap-4 p-8 ${className}`}>
@@ -423,8 +434,8 @@ export default function Home() {
   const { changed, setChanged, setDataState, dataState } = useContext(DataContext)
   const { data: session, status } = useSession()
   const [username, setUsername] = useState(
-      session?.user?.name    
-   || 'seikirin')
+    session?.user?.name
+    || 'seikirin')
   const [list, setList] = useState([])
   const loadingComponents = useRef(<LoadingCard />)
   const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
