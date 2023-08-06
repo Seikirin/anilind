@@ -91,13 +91,9 @@ export default function Page() {
     const maxComparisonsRef = useRef(1);
 
     const onClickRight = () => {
-        console.log("clicked right");
-        console.log(choices.current);
         pickedChoice.current = choices.current[1];
     };
     const onClickLeft = () => {
-        console.log("clicked left");
-        console.log(choices.current);
         pickedChoice.current = choices.current[0];
     };
 
@@ -114,8 +110,8 @@ export default function Page() {
         if (orderedCharacters.length > 0)
             return;
         if (characters.length > 0) {
-            rightRef.current.addEventListener("click", onClickRight);
-            leftRef.current.addEventListener("click", onClickLeft);
+            rightRef.current.querySelector("img").addEventListener("click", onClickRight);
+            leftRef.current.querySelector("img").addEventListener("click", onClickLeft);
             if (characters.length === 0)
                 return 1;
             let comparisons = 0;
@@ -139,6 +135,10 @@ export default function Page() {
             pickedChoice.current = null;
             rightRef.current.querySelector("img").src = b.image;
             leftRef.current.querySelector("img").src = a.image;
+            setTimeout(() => {
+                rightRef.current.querySelector("img").style.removeProperty("max-height");
+                leftRef.current.querySelector("img").style.removeProperty("max-height");
+            }, 1000);
             while (pickedChoice.current === null) {
                 console.log("waiting");
                 await new Promise((resolve) => setTimeout(resolve, 100));
@@ -161,10 +161,13 @@ export default function Page() {
         });
         return () => {
             console.log("cleaning up");
-            rightRef.current.removeEventListener("click", onClickRight);
-            leftRef.current.removeEventListener("click", onClickLeft);
+            rightRef.current.querySelector("img").removeEventListener("click", onClickRight);
+            leftRef.current.querySelector("img").removeEventListener("click", onClickLeft);
         }
     }, [characters]);
+
+    useEffect(() => {
+    }, [orderedCharacters]);
 
     return (
         orderedCharacters.length == 0 ?
@@ -190,14 +193,14 @@ export default function Page() {
                         ref={leftRef}
                         key={"left"}
                         className="rounded overflow-hidden h-full aspect-[2/3] cursor-pointer hover:brightness-110 transition-all relative">
-                        <img src={null} style={{ opacity: 0 }} className="h-full aspect-[2/3] object-cover z-10 absolute inset-0" />
+                        <img draggable={false} src={null} style={{ opacity: 0, maxHeight: 0 }} className="h-full aspect-[2/3] object-cover z-10 absolute inset-0 select-none" />
                         <SlidingSuspense />
                     </div>
                     <div
                         ref={rightRef}
                         key={"idk"}
                         className="rounded overflow-hidden h-full aspect-[2/3] cursor-pointer hover:brightness-110 transition-all relative">
-                        <img src={null} style={{ opacity: 0 }} className="h-full aspect-[2/3] object-cover z-10 absolute inset-0" />
+                        <img draggable={false} src={null} style={{ opacity: 0, maxHeight: 0 }} className="h-full aspect-[2/3] object-cover z-10 absolute inset-0 select-none " />
                         <SlidingSuspense />
                     </div>
                 </div>
