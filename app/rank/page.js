@@ -5,19 +5,17 @@ import DataContext from "@/contexts/DataContext";
 import { useSession } from "next-auth/react";
 
 function getAnilistFavoriteCharacters(username, setDataState) {
-    return fetch("https://graphql.anilist.co", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
-
-        body: JSON.stringify({
+    const getBody = (username, page) => {
+        return JSON.stringify({
             query: `
-                query ($username: String) {
+                query ($username: String, $page: Int) {
                     User(name: $username) {
                         favourites {
-                            characters {
+                            characters(page: $page) {
+                                pageInfo {
+                                    hasNextPage
+                                    currentPage
+                                }
                                 nodes {
                                     name {
                                         full
@@ -33,49 +31,102 @@ function getAnilistFavoriteCharacters(username, setDataState) {
             `,
             variables: {
                 username: username,
+                page: page,
             },
-        }),
-    })
-        .then((res) => res.json())
-        .then((res) => {
-            const characters = res.data.User.favourites.characters.nodes;
-            const charactersData = characters.map((character) => {
-                return {
-                    name: character.name.full,
-                    image: character.image.large,
-                };
-            });
-            setDataState("loaded");
-            return charactersData;
+        });
+    };
+
+    const getCharacters = (username, page) => {
+        return fetch("https://graphql.anilist.co", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: getBody(username, page),
         })
-        .catch((err) => {
-            console.log(err);
-            setDataState("error");
-            return []
-        }
-        );
+            .then((res) => res.json())
+            .then((res) => {
+                const characters = res.data.User.favourites.characters;
+                const pageInfo = characters.pageInfo;
+                const nodes = characters.nodes;
+                if (pageInfo.hasNextPage) {
+                    return getCharacters(username, pageInfo.currentPage + 1).then((nextNodes) => {
+                        return nodes.concat(nextNodes);
+                    });
+                } else {
+                    return nodes;
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+                setDataState("error");
+                return [];
+            }
+            );
+    };
+
+    return getCharacters(username, 1).then((characters) => {
+        console.log(characters);
+        const charactersData = characters.map((character) => {
+            return {
+                name: character.name.full,
+                image: character.image.large,
+            };
+        });
+        setDataState("loaded");
+        return charactersData;
+    });
 }
 
-async function mergeSort(arr, asyncComparator) {
+async function mergeInsertionSort(arr, compareFn) {
     if (arr.length <= 1) return arr;
-    const mid = Math.floor(arr.length / 2);
-    const [left, right] = await Promise.all([
-        mergeSort(arr.slice(0, mid), asyncComparator),
-        mergeSort(arr.slice(mid), asyncComparator),
-    ]);
-    return merge(left, right, asyncComparator);
-}
-
-async function merge(left, right, asyncComparator) {
-    let merged = [];
-    while (left.length && right.length) {
-        const compareResult = await asyncComparator(left[0], right[0]);
-        merged.push(compareResult <= 0 ? left.shift() : right.shift());
+  
+    async function merge(left, right) {
+      const result = [];
+      let leftIndex = 0;
+      let rightIndex = 0;
+  
+      while (leftIndex < left.length && rightIndex < right.length) {
+        const comparisonResult = await compareFn(left[leftIndex], right[rightIndex]);
+  
+        if (comparisonResult <= 0) {
+          result.push(left[leftIndex]);
+          leftIndex++;
+        } else {
+          result.push(right[rightIndex]);
+          rightIndex++;
+        }
+      }
+  
+      // Add the remaining elements from both arrays
+      while (leftIndex < left.length) {
+        result.push(left[leftIndex]);
+        leftIndex++;
+      }
+  
+      while (rightIndex < right.length) {
+        result.push(right[rightIndex]);
+        rightIndex++;
+      }
+  
+      return result;
     }
-    return merged.concat(left, right);
-}
+  
+    async function mergeSort(arr) {
+      if (arr.length <= 1) return arr;
+  
+      const middle = Math.floor(arr.length / 2);
+      const left = arr.slice(0, middle);
+      const right = arr.slice(middle);
+  
+      return merge(await mergeSort(left), await mergeSort(right));
+    }
+  
+    return mergeSort(arr);
+  }
+  
 
-export default function Page() {
+export default function Page({searchParams}) {
     const { dataState, setDataState } = useContext(DataContext);
     const { data: session, status } = useSession();
     const [characters, setCharacters] = useState([]);
@@ -89,17 +140,25 @@ export default function Page() {
     const idkRef = useRef(null);
     const [maxComparisons, setMaxComparisons] = useState(1);
     const maxComparisonsRef = useRef(1);
-
+    const canChoose = useRef(false);
+    const fadeSpeed = 100;
+   
     const onClickRight = () => {
+        if (choices.current.length != 2 || !canChoose.current)
+            return;
         pickedChoice.current = choices.current[1];
     };
     const onClickLeft = () => {
+        if (choices.current.length != 2 || !canChoose.current)
+            return;
         pickedChoice.current = choices.current[0];
     };
 
     useEffect(() => {
         if (status === "authenticated") {
             getAnilistFavoriteCharacters(session.user.name, setDataState).then((characters) => {
+                if (searchParams.limit != null)
+                    characters = characters.slice(0, searchParams.limit);
                 setCharacters(characters.sort(() => Math.random() - 0.5));
                 console.log(characters.length)
             });
@@ -119,7 +178,7 @@ export default function Page() {
                 comparisons++;
                 return 1
             }
-            mergeSort(characters, compare).then((sortedCharacters) => {
+            mergeInsertionSort(characters, compare).then((sortedCharacters) => {
                 setMaxComparisons(comparisons);
                 maxComparisonsRef.current = comparisons;
             });
@@ -127,40 +186,92 @@ export default function Page() {
         if (characters.length === 0 || running.current == true)
             return;
         running.current = true;
-
+        console.log("running");
         async function compare(a, b) {
             console.log("comparing", a, b);
+            const elements = [rightRef.current.querySelector("img"), leftRef.current.querySelector("img")];
+            canChoose.current = false;
             choices.current = [a, b];
-            console.log(choices);
             pickedChoice.current = null;
+            // rightRef.current.querySelector("img").style.opacity = 0;
+            // leftRef.current.querySelector("img").style.opacity = 0;
+            elements.forEach((element) => {
+                element.src = "https://cdn.discordapp.com/attachments/633768073068806144/1138119420317810892/brave_vOA72DIU8U.png";
+            });
+            // await new Promise((resolve) => setTimeout(resolve, fadeSpeed));
             rightRef.current.querySelector("img").src = b.image;
             leftRef.current.querySelector("img").src = a.image;
+            elements.forEach((element) => {
+                element.style.opacity = 1
+            });
+            let bothImagesLoaded = true;
+            elements.forEach((element) => {
+                if (!element.complete) {
+                    bothImagesLoaded = false;
+                }
+            });
+            if (!bothImagesLoaded) {
+                elements.forEach((element) => {
+                    element.style.opacity = 0.5;
+                });
+            }
+            // await until both images are loaded
+            await new Promise((resolve) => {
+                let loaded = 0;
+                elements.forEach((element) => {
+                    if (element.complete) {
+                        loaded++;
+                        if (loaded == elements.length)
+                            resolve();
+                    }
+                    else {
+                        element.addEventListener("load", () => {
+                            loaded++;
+                            if (loaded == elements.length)
+                                resolve();
+                        });
+                    }
+                });
+            });
+            elements.forEach((element) => {
+                // make image not blurry
+                element.style.opacity = 1;
+            });
             setTimeout(() => {
+                if (rightRef.current == null || leftRef.current == null)
+                    return;
                 rightRef.current.querySelector("img").style.removeProperty("max-height");
                 leftRef.current.querySelector("img").style.removeProperty("max-height");
             }, 1000);
+            canChoose.current = true;
             while (pickedChoice.current === null) {
                 console.log("waiting");
-                await new Promise((resolve) => setTimeout(resolve, 100));
+                await new Promise((resolve) => setTimeout(resolve, fadeSpeed));
             }
-            console.log("picked", pickedChoice.current);
             setComparisons((c) => {
                 if (c == maxComparisonsRef.current)
                     return c;
                 else
                     return c + 1;
             })
-            return pickedChoice.current === a;
+            choices.current = null;
+            // rightRef.current.querySelector("img").style.opacity = 0;
+            // leftRef.current.querySelector("img").style.opacity = 0;
+            // await new Promise((resolve) => setTimeout(resolve, fadeSpeed * 1.5));
+            return pickedChoice.current === b;
         }
-        rightRef.current.querySelector("img").style.transition = "opacity 0.5s";
-        leftRef.current.querySelector("img").style.transition = "opacity 0.5s";
+        rightRef.current.querySelector("img").style.transition = `opacity ${fadeSpeed}ms, filter ${fadeSpeed}ms`;
+        leftRef.current.querySelector("img").style.transition = `opacity ${fadeSpeed}ms`;
         rightRef.current.querySelector("img").style.opacity = 1;
         leftRef.current.querySelector("img").style.opacity = 1;
-        mergeSort(characters, compare).then((sortedCharacters) => {
+        mergeInsertionSort(characters, compare).then((sortedCharacters) => {
+            console.log(sortedCharacters)
             setOrderedCharacters(sortedCharacters);
         });
         return () => {
             console.log("cleaning up");
+            if (rightRef.current == null || leftRef.current == null)
+                return;
             rightRef.current.querySelector("img").removeEventListener("click", onClickRight);
             leftRef.current.querySelector("img").removeEventListener("click", onClickLeft);
         }
@@ -175,7 +286,7 @@ export default function Page() {
                 <div className="w-3/4 md:w-1/6 bg-anilist-100 rounded-full h-6 overflow-hidden relative shadow-xs shadow-anilist-400">
                     <div className=" absolute inset-0 text-white text-xs flex items-center justify-center p-3">
                         <span className="text-[0.65rem]">
-                            {comparisons == maxComparisons ? "Any time now..." : maxComparisons == 1 ? "" : "Approximately " + (maxComparisons - comparisons) + " left"}
+                            {comparisons == maxComparisons ? "Any time now..." : maxComparisons == 1 ? "" : "ABOUT " + (maxComparisons - comparisons) + " left"}
                         </span>
                         <span className="ml-auto font-semibold ">
                             {Math.floor(comparisons * 100 / maxComparisons)}%
@@ -213,7 +324,7 @@ export default function Page() {
                     </button>
                 </div> */}
             </div> :
-            <div className="bg-anilist-300 min-h-screen pt-24">
+            <div className="bg-anilist-300 min-h-screen py-16 pb-2">
                 <div className="w-full h-full flex justify-center items-center">
                     <div className="w-full m-5 md:w-1/4 h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
                         {
