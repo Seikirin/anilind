@@ -201,7 +201,7 @@ export default function Page({ searchParams }) {
 
     useEffect(() => {
         if (status === "authenticated") {
-            getAnilistFavoriteCharacters('sysmek', setDataState).then((characters) => {
+            getAnilistFavoriteCharacters(session.user.name, setDataState).then((characters) => {
                 if (searchParams.limit != null)
                     characters = characters.slice(0, searchParams.limit);
                 setCharacters(characters.sort(() => Math.random() - 0.5));
