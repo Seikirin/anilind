@@ -23,6 +23,7 @@ function getAnilistFavoriteCharacters(username, setDataState) {
                                     image {
                                         large
                                     }
+                                    id
                                 }
                             }
                         }
@@ -71,6 +72,7 @@ function getAnilistFavoriteCharacters(username, setDataState) {
             return {
                 name: character.name.full,
                 image: character.image.large,
+                id: character.id,
             };
         });
         setDataState("loaded");
@@ -78,55 +80,98 @@ function getAnilistFavoriteCharacters(username, setDataState) {
     });
 }
 
+function updateAnilistFavoriteOrder(orderedCharacters, session) {
+    const { accessToken } = session;
+    const characterIds = orderedCharacters.map((character) => character.id);
+
+    console.log("Updating with ")
+    orderedCharacters.forEach((character) => {
+        console.log(character.name + ": " + character.id);
+    });
+    console.log("Updating with " + characterIds.join(", "));
+
+    const getBody = (orderedCharacterIds) => {
+        return JSON.stringify({
+            query: `
+            mutation {
+                UpdateFavouriteOrder(
+                    characterIds: [${orderedCharacterIds.join(', ')}],
+                    characterOrder: [${orderedCharacterIds.map((id, index) => `${index}`).join(', ')}]
+                )
+                {
+                    characters {
+                        nodes {
+                            id
+                        }
+                    }
+                }
+            }
+        `
+        });
+    };
+
+    return fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+        },
+        body: getBody(characterIds),
+    }).then((res) => res.json()).then((res) => {
+        console.log(res);
+    });
+}
+
+
 async function mergeInsertionSort(arr, compareFn) {
     if (arr.length <= 1) return arr;
-  
-    async function merge(left, right) {
-      const result = [];
-      let leftIndex = 0;
-      let rightIndex = 0;
-  
-      while (leftIndex < left.length && rightIndex < right.length) {
-        const comparisonResult = await compareFn(left[leftIndex], right[rightIndex]);
-  
-        if (comparisonResult <= 0) {
-          result.push(left[leftIndex]);
-          leftIndex++;
-        } else {
-          result.push(right[rightIndex]);
-          rightIndex++;
-        }
-      }
-  
-      // Add the remaining elements from both arrays
-      while (leftIndex < left.length) {
-        result.push(left[leftIndex]);
-        leftIndex++;
-      }
-  
-      while (rightIndex < right.length) {
-        result.push(right[rightIndex]);
-        rightIndex++;
-      }
-  
-      return result;
-    }
-  
-    async function mergeSort(arr) {
-      if (arr.length <= 1) return arr;
-  
-      const middle = Math.floor(arr.length / 2);
-      const left = arr.slice(0, middle);
-      const right = arr.slice(middle);
-  
-      return merge(await mergeSort(left), await mergeSort(right));
-    }
-  
-    return mergeSort(arr);
-  }
-  
 
-export default function Page({searchParams}) {
+    async function merge(left, right) {
+        const result = [];
+        let leftIndex = 0;
+        let rightIndex = 0;
+
+        while (leftIndex < left.length && rightIndex < right.length) {
+            const comparisonResult = await compareFn(left[leftIndex], right[rightIndex]);
+
+            if (comparisonResult <= 0) {
+                result.push(left[leftIndex]);
+                leftIndex++;
+            } else {
+                result.push(right[rightIndex]);
+                rightIndex++;
+            }
+        }
+
+        // Add the remaining elements from both arrays
+        while (leftIndex < left.length) {
+            result.push(left[leftIndex]);
+            leftIndex++;
+        }
+
+        while (rightIndex < right.length) {
+            result.push(right[rightIndex]);
+            rightIndex++;
+        }
+
+        return result;
+    }
+
+    async function mergeSort(arr) {
+        if (arr.length <= 1) return arr;
+
+        const middle = Math.floor(arr.length / 2);
+        const left = arr.slice(0, middle);
+        const right = arr.slice(middle);
+
+        return merge(await mergeSort(left), await mergeSort(right));
+    }
+
+    return mergeSort(arr);
+}
+
+
+export default function Page({ searchParams }) {
     const { dataState, setDataState } = useContext(DataContext);
     const { data: session, status } = useSession();
     const [characters, setCharacters] = useState([]);
@@ -142,7 +187,7 @@ export default function Page({searchParams}) {
     const maxComparisonsRef = useRef(1);
     const canChoose = useRef(false);
     const fadeSpeed = 100;
-   
+
     const onClickRight = () => {
         if (choices.current.length != 2 || !canChoose.current)
             return;
@@ -156,7 +201,7 @@ export default function Page({searchParams}) {
 
     useEffect(() => {
         if (status === "authenticated") {
-            getAnilistFavoriteCharacters(session.user.name, setDataState).then((characters) => {
+            getAnilistFavoriteCharacters('sysmek', setDataState).then((characters) => {
                 if (searchParams.limit != null)
                     characters = characters.slice(0, searchParams.limit);
                 setCharacters(characters.sort(() => Math.random() - 0.5));
@@ -173,15 +218,18 @@ export default function Page({searchParams}) {
             leftRef.current.querySelector("img").addEventListener("click", onClickLeft);
             if (characters.length === 0)
                 return 1;
-            let comparisons = 0;
-            async function compare(a, b) {
-                comparisons++;
-                return 1
+            if (maxComparisonsRef.current == 1)
+            {
+                let comparisons = 0;
+                async function compare(a, b) {
+                    comparisons++;
+                    return Math.random() - 0.5;
+                }
+                mergeInsertionSort(characters, compare).then((sortedCharacters) => {
+                    setMaxComparisons(comparisons);
+                    maxComparisonsRef.current = comparisons;
+                });
             }
-            mergeInsertionSort(characters, compare).then((sortedCharacters) => {
-                setMaxComparisons(comparisons);
-                maxComparisonsRef.current = comparisons;
-            });
         }
         if (characters.length === 0 || running.current == true)
             return;
@@ -249,9 +297,6 @@ export default function Page({searchParams}) {
                 await new Promise((resolve) => setTimeout(resolve, fadeSpeed));
             }
             setComparisons((c) => {
-                if (c == maxComparisonsRef.current)
-                    return c;
-                else
                     return c + 1;
             })
             choices.current = null;
@@ -283,13 +328,21 @@ export default function Page({searchParams}) {
     return (
         orderedCharacters.length == 0 ?
             <div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2">
-                <div className="w-3/4 md:w-1/6 bg-anilist-100 rounded-full h-6 overflow-hidden relative shadow-xs shadow-anilist-400">
-                    <div className=" absolute inset-0 text-white text-xs flex items-center justify-center p-3">
-                        <span className="text-[0.65rem]">
-                            {comparisons == maxComparisons ? "Any time now..." : maxComparisons == 1 ? "" : "ABOUT " + (maxComparisons - comparisons) + " left"}
+                <div className="w-3/4 md:w-4/12 bg-anilist-100 rounded-full h-6 overflow-hidden relative shadow-xs shadow-anilist-400">
+                    <div className=" absolute inset-0 text-white text-xs p-3 flex justify-between items-center">
+                        <span className="font-semibold flex-1 flex items-center gap-0.5">
+                            {comparisons}
+                            <span className="text-[0.5rem] pt-1">
+                                / {maxComparisons}
+                            </span>
                         </span>
-                        <span className="ml-auto font-semibold ">
-                            {Math.floor(comparisons * 100 / maxComparisons)}%
+                        <span className="text-[0.65rem] flex-1 text-center">
+                            {comparisons >= maxComparisons ? "Any time now..." : maxComparisons == 1 ? "" : "About " + (maxComparisons - comparisons) + " left"}
+                        </span>
+                        <span className="font-semibold flex-1 text-right">
+                            {Math.floor(
+                                    (comparisons > maxComparisons ? maxComparisons : comparisons)
+                                 * 100 / maxComparisons)}%
                         </span>
                     </div>
                     <div
@@ -325,8 +378,17 @@ export default function Page({searchParams}) {
                 </div> */}
             </div> :
             <div className="bg-anilist-300 min-h-screen py-16 pb-2">
-                <div className="w-full h-full flex justify-center items-center">
-                    <div className="w-full m-5 md:w-1/4 h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
+                <div className="w-full h-full flex justify-center items-center flex-col pt-4">
+                    <button
+                        onClick={() => {
+                            console.log(orderedCharacters);
+                            console.log(orderedCharacters.map((character) => character.id).join(", "));
+                            updateAnilistFavoriteOrder(orderedCharacters, session);
+                        }}
+                        className="rounded bg-anilist-400 hover:bg-opacity-75 transition-all px-4 py-2 mb-2 text-white" >
+                        Update Order
+                    </button>
+                    <div className="w-full md:w-1/4 h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
                         {
                             orderedCharacters.map((character) => {
                                 return <div
