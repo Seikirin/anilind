@@ -164,7 +164,6 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList
 function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   const [opacity, setOpacity] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
-  const [glowVisible, setGlowVisible] = useState(false)
   const anime = useMemo(() => list.find(item => item.media.id === mediaId), [list])
   const timeUntilAiring = anime.media.nextAiringEpisode?.timeUntilAiring
   const timeUntilAiringToDaysHoursAndMinutes = (timeUntilAiring) => {
@@ -185,7 +184,6 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   const innerRef = useRef(null)
   const decreaseRef = useRef(null)
   const addTextRef = useRef(null)
-  const glowVisibleRef = useRef(false)
 
   useEffect(() => {
     const timeout = setTimeout(() => setOpacity(1), 100)
@@ -226,10 +224,6 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       let diffY = touchY - startY;
       if (translateX + diff > 0 || episodesBehind <= 0 || mutableIsMobile == false)
         return;
-      if (glowVisibleRef.current == false)
-        setGlowVisible(true), glowVisibleRef.current = true
-      if (addRef.current == null)
-        return;
       let delta = (startTranslateX + diff) - translateX
       if (
         (translateX < 0 && delta < 0)
@@ -252,8 +246,6 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       if (episodesBehind <= 0 || mutableIsMobile == false)
         return;
       card.style.transition = `transform ${speed}ms ease-out`
-      if (addRef.current == null)
-        return;
       addRef.current.style.transition = `all ${speed}ms ease-out`
       if (fullSwipe && getEpisodesBehind(list.find(item => item.media.id === mediaId)) == 1) {
         setTimeout(() => {
@@ -269,7 +261,6 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       setTimeout(() => {
         card.style.transition = ''
         addRef.current.style.transition = ''
-        setGlowVisible(false), glowVisibleRef.current = false
       }, speed)
       e.preventDefault()
     }
@@ -290,14 +281,14 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       ref={ref}
       className="w-full h-full aspect-[10/5] xs:aspect-[10/7] relative">
 
-      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={() => { }}
           className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
           +1
         </button>
       </div>}
-      {(isMobile && glowVisible) && <div
+      {isMobile && <div
         ref={addRef}
         style={{
           transform: `translateX(500%)`,
@@ -441,31 +432,6 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
   )
 }
 
-function AnimeLists({ list, session, setChanged, dataState, setList, loadingComponents }) {
-  const weekDaysStartingWithToday = getWeekDaysStartingWithToday().map(day => day.slice(0, 3))
-  const Buttons = ["Behind", ...weekDaysStartingWithToday]
-  const [selectedButton, setSelectedButton] = useState(0)
-
-  return (
-    <div className=" bg-anilist-50 min-h-screen">
-      <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
-      <div className="fixed bottom-0 w-full h-24 flex items-center justify-center p-6">
-        <div className="w-full md:w-1/4 h-full rounded-full overflow-hidden bg-anilist-100 shadow-sm shadow-anilist-200 text-white">
-          <div className="w-full flex h-full">
-            {
-              Buttons.map((day, i) => (
-                <button key={i} onClick={() => setSelectedButton(i)} className={`w-60 h-full flex justify-center text-xs px-3 md:px-4 items-center ${selectedButton == i ? "bg-anilist-400" : "bg-anilist-100"}`}>
-                  {day}
-                </button>
-              ))
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 
 export default function Home() {
   const { changed, setChanged, setDataState, dataState } = useContext(DataContext)
@@ -475,6 +441,7 @@ export default function Home() {
     || 'seikirin')
   const [list, setList] = useState([])
   const loadingComponents = useRef(<LoadingCard />)
+  const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
 
   useEffect(() => {
     if (username.length > 0) {
@@ -492,6 +459,15 @@ export default function Home() {
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
 
   return (
-    <AnimeLists loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} />
+    <main className="bg-anilist-50 overflow-hidden">
+      <div className="bg-anilist-300 rounded shadow-lg min-h-screen">
+        <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
+      </div>
+      {
+        weekDaysStartingWithToday.map((day, i) => (
+          <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
+        ))
+      }
+    </main>
   )
 }
