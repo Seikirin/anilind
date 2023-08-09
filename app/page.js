@@ -6,6 +6,9 @@ import { getToken } from "next-auth/jwt";
 import DataContext from "@/contexts/DataContext";
 
 function getAnilistUserWatchingList(user, setDataState, session) {
+  if (!session)
+    return Promise.resolve([])
+
   const { accessToken } = session;
 
   setDataState("loading")
@@ -161,6 +164,7 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList
 function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   const [opacity, setOpacity] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [glowVisible, setGlowVisible] = useState(false)
   const anime = useMemo(() => list.find(item => item.media.id === mediaId), [list])
   const timeUntilAiring = anime.media.nextAiringEpisode?.timeUntilAiring
   const timeUntilAiringToDaysHoursAndMinutes = (timeUntilAiring) => {
@@ -181,6 +185,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   const innerRef = useRef(null)
   const decreaseRef = useRef(null)
   const addTextRef = useRef(null)
+  const glowVisibleRef = useRef(false)
 
   useEffect(() => {
     const timeout = setTimeout(() => setOpacity(1), 100)
@@ -221,6 +226,10 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       let diffY = touchY - startY;
       if (translateX + diff > 0 || episodesBehind <= 0 || mutableIsMobile == false)
         return;
+      if (glowVisibleRef.current == false)
+        setGlowVisible(true), glowVisibleRef.current = true
+      if (addRef.current == null)
+        return;
       let delta = (startTranslateX + diff) - translateX
       if (
         (translateX < 0 && delta < 0)
@@ -258,6 +267,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       setTimeout(() => {
         card.style.transition = ''
         addRef.current.style.transition = ''
+        setGlowVisible(false), glowVisibleRef.current = false
       }, speed)
       e.preventDefault()
     }
@@ -278,14 +288,14 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       ref={ref}
       className="w-full h-full aspect-[10/5] xs:aspect-[10/7] relative">
 
-      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={() => { }}
           className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
           +1
         </button>
       </div>}
-      {isMobile && <div
+      {(isMobile && glowVisible) && <div
         ref={addRef}
         style={{
           transform: `translateX(500%)`,
