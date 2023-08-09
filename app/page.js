@@ -252,6 +252,8 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
       if (episodesBehind <= 0 || mutableIsMobile == false)
         return;
       card.style.transition = `transform ${speed}ms ease-out`
+      if (addRef.current == null)
+        return;
       addRef.current.style.transition = `all ${speed}ms ease-out`
       if (fullSwipe && getEpisodesBehind(list.find(item => item.media.id === mediaId)) == 1) {
         setTimeout(() => {
@@ -439,6 +441,31 @@ function AnimeList({ list, filterFunction, title, className, session, setChanged
   )
 }
 
+function AnimeLists({ list, session, setChanged, dataState, setList, loadingComponents }) {
+  const weekDaysStartingWithToday = getWeekDaysStartingWithToday().map(day => day.slice(0, 3))
+  const Buttons = ["Behind", ...weekDaysStartingWithToday]
+  const [selectedButton, setSelectedButton] = useState(0)
+
+  return (
+    <div className=" bg-anilist-50 min-h-screen">
+      <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
+      <div className="fixed bottom-0 w-full h-24 flex items-center justify-center p-6">
+        <div className="w-full md:w-1/4 h-full rounded-full overflow-hidden bg-anilist-100 shadow-sm shadow-anilist-200 text-white">
+          <div className="w-full flex h-full">
+            {
+              Buttons.map((day, i) => (
+                <button key={i} onClick={() => setSelectedButton(i)} className={`w-60 h-full flex justify-center text-xs px-3 md:px-4 items-center ${selectedButton == i ? "bg-anilist-400" : "bg-anilist-100"}`}>
+                  {day}
+                </button>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 export default function Home() {
   const { changed, setChanged, setDataState, dataState } = useContext(DataContext)
@@ -448,7 +475,6 @@ export default function Home() {
     || 'seikirin')
   const [list, setList] = useState([])
   const loadingComponents = useRef(<LoadingCard />)
-  const weekDaysStartingWithToday = getWeekDaysStartingWithToday();
 
   useEffect(() => {
     if (username.length > 0) {
@@ -466,15 +492,6 @@ export default function Home() {
     return <div className="absolute inset-0 text-white flex justify-center items-center"></div>
 
   return (
-    <main className="bg-anilist-50 overflow-hidden">
-      <div className="bg-anilist-300 rounded shadow-lg min-h-screen">
-        <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getEpisodesBehind(anime) > 0} title={dataState == "loading" ? "Loading..." : `${getTotalBehind(list)} episodes behind`} className="pt-20" />
-      </div>
-      {
-        weekDaysStartingWithToday.map((day, i) => (
-          <AnimeList loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} filterFunction={anime => getAiringDay(anime) === day} title={day} key={i} />
-        ))
-      }
-    </main>
+    <AnimeLists loadingComponents={loadingComponents} setList={setList} session={session} list={list} dataState={dataState} setChanged={setChanged} />
   )
 }
