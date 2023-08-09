@@ -174,6 +174,7 @@ async function mergeInsertionSort(arr, compareFn) {
 export default function Page({ searchParams }) {
     const { dataState, setDataState } = useContext(DataContext);
     const { data: session, status } = useSession();
+    const [updated, setUpdated] = useState(false);
     const [characters, setCharacters] = useState([]);
     const [orderedCharacters, setOrderedCharacters] = useState([]);
     const [comparisons, setComparisons] = useState(0);
@@ -383,9 +384,10 @@ export default function Page({ searchParams }) {
                         onClick={() => {
                             console.log(orderedCharacters);
                             console.log(orderedCharacters.map((character) => character.id).join(", "));
+                            setUpdated(true);
                             updateAnilistFavoriteOrder(orderedCharacters, session);
                         }}
-                        className="rounded bg-anilist-400 hover:bg-opacity-75 transition-all px-4 py-2 mb-2 text-white" >
+                        className={`rounded bg-anilist-400 hover:bg-opacity-75 transition-all px-4 mb-2 text-white ${updated ? "max-h-0 py-0" : "max-h-96  py-2"} overflow-hidden duration-100`} >
                         Update Order
                     </button>
                     <div className="w-full md:w-1/4 h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
