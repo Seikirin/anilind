@@ -283,7 +283,9 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
 
       {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button
-          onClick={() => { }}
+          onClick={() => {
+            requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList)
+          }}
           className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
           +1
         </button>
