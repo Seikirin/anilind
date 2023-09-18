@@ -192,7 +192,7 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
     const handleResize = () => {
       const hasTouchScreen = window.matchMedia("(hover: none)").matches
       const newValue = window.innerWidth < 560 && hasTouchScreen
-      setIsMobile(newValue)
+      // setIsMobile(newValue)
       mutableIsMobile = newValue
     }
     handleResize()
