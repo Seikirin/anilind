@@ -124,7 +124,7 @@ function getAiringHourInLocalTimezone(anime) {
   return airingDay ? new Date(airingDay * 1000).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }) : ''
 }
 
-function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList) {
+function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList, increase) {
   const { accessToken } = session;
 
   console.log("Changing progress of", anime.media.title.romaji, "to", anime.progress + 1);
@@ -144,7 +144,7 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList
           progress
         }
       }
-    `, variables: { mediaId: anime.media.id, progress: anime.progress + 1 }
+    `, variables: { mediaId: anime.media.id, progress: anime.progress + increase}
     }),
   })
     .then(r => r.json())
@@ -158,7 +158,6 @@ function requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList
     })
     .catch(err => console.error(err))
 }
-
 
 
 function AnimeCard({ mediaId, session, setChanged, setList, list }) {
@@ -279,17 +278,39 @@ function AnimeCard({ mediaId, session, setChanged, setList, list }) {
   return (
     <div
       ref={ref}
-      className="w-full h-full aspect-[10/5] xs:aspect-[10/7] relative">
+      className="w-full h-full aspect-[10/5] xs:aspect-[10/7] relative select-none">
 
-      {!isMobile && episodesBehind > 0 && <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-        <button
-          onClick={() => {
-            requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList)
-          }}
-          className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
-          +1
-        </button>
-      </div>}
+      {!isMobile && episodesBehind > 0 &&
+          <div className="absolute inset-0 w-full h-full z-10 rounded p-4 backdrop-blur-sm  from-anilist-200 bg-gradient-to-b from-[-50%]  opacity-0 hover:opacity-100 transition-all duration-500 to-50% flex flex-col gap-2">
+              <div className="text-white text-xs w-full text-center bg-black rounded bg-opacity-50 p-1">
+                {getEpisodesBehind(anime)} episodes behind
+              </div>
+
+              <div className="w-full flex-1 bg-anilist-50 grid grid-cols-2 text-white rounded overflow-hidden shadow-black shadow-sm text-xs">
+                {
+                  [["+1", "bg-anilist-50", 1], ["Catch Up", "bg-anilist-200", getEpisodesBehind(anime)]].map(([text, extraClasses, increase], i) => (
+                    <div
+                    key={i}
+                    onClick={() => {
+                      requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList, increase)
+                    }}
+                    className={"cursor-pointer hover:scale-110 transition-all bg-opacity-80 hover:bg-opacity-100 flex justify-center items-center " + extraClasses}>
+                      {text}
+                    </div>
+                  ))
+                }
+              </div>
+          </div>
+        // <div className="absolute inset-0 bg-anilist-400 z-[1] bg-opacity-10 backdrop-blur-sm flex justify-center items-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+        //   <button
+        //     onClick={() => {
+        //       requestAnilistIncreaseProgressByOne(anime, session, setChanged, setList)
+        //     }}
+        //     className='bg-anilist-400 text-white rounded-md hover:bg-opacity-80 transition-colors duration-300 flex gap-2 justify-center items-center p-2 px-4'>
+        //     +1
+        //   </button>
+        // </div>
+      }
       {isMobile && <div
         ref={addRef}
         style={{
