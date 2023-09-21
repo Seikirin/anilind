@@ -100,7 +100,9 @@ function getAnilistUserWatchingList(user, setDataState, session) {
 }
 
 function getEpisodesBehind(anime) {
-  if (!anime.media.nextAiringEpisode && anime.media.episodes)
+  if (anime.media.startDate.month == null || anime.media.startDate.day == null || anime.media.startDate.year == null)
+    return 0;
+  else if (!anime.media.nextAiringEpisode && anime.media.episodes)
     return anime.media.episodes - anime.progress
   else if (anime.media.nextAiringEpisode)
     return anime.media.nextAiringEpisode?.episode - 1 - anime.progress
