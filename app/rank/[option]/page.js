@@ -3,14 +3,23 @@
 import { useContext, useEffect, useMemo, useState, useRef } from "react";
 import DataContext from "@/contexts/DataContext";
 import { useSession } from "next-auth/react";
-import CharacterImages from "@/data/CharacterIcons.json";
+import StarRail from "@/public/StarRail/items.json";
+import GenshinImpact from "@/public/GenshinImpact/items.json";
+import { useRouter } from "next/navigation";
 
-function getAnilistFavoriteCharacters(username, setDataState) {
-	const newArray = Object.keys(CharacterImages).map((key) => {
+const Data = {
+	StarRail,
+	GenshinImpact,
+};
+
+function getAnilistFavoriteCharacters(username, setDataState, params) {
+	const obj = Data[params.option];
+
+	const newArray = Object.keys(obj).map((key) => {
 		return [
 			{
-				name: CharacterImages[key].charName,
-				image: CharacterImages[key].imageUrl,
+				name: obj[key],
+				image: "/" + params.option + "/" + obj[key] + ".png",
 				id: key,
 			},
 		];
@@ -128,7 +137,7 @@ function SortedCharacterElement({ character, i }) {
 			className="overflow-hidden w-[calc(100%/5)] aspect-[9/16] cursor-pointer hover:brightness-110 transition-all relative"
 		>
 			<img
-				src={"/GenshinImpact/" + character.name + ".png"}
+				src={character.image}
 				className="h-full aspect-[9/16] object-cover z-10 absolute inset-0 m-0.5 rounded bg-anilist-100 "
 			/>
 			<div    style={{backgroundColor: character.color}}
@@ -140,7 +149,7 @@ function SortedCharacterElement({ character, i }) {
 	);
 }
 
-export default function Page({ searchParams }) {
+export default function Page({ searchParams, params }) {
 	const { dataState, setDataState } = useContext(DataContext);
 	const { data: session, status } = useSession();
 	const [updated, setUpdated] = useState(false);
@@ -157,6 +166,8 @@ export default function Page({ searchParams }) {
 	const maxComparisonsRef = useRef(1);
 	const canChoose = useRef(false);
 	const fadeSpeed = 100;
+	const router = useRouter();
+
 
 	const onClickRight = () => {
 		if (choices.current.length != 2 || !canChoose.current) return;
@@ -173,7 +184,7 @@ export default function Page({ searchParams }) {
 
 	useEffect(() => {
 		if (status === "authenticated") {
-			getAnilistFavoriteCharacters(session.user.name, setDataState).then(
+			getAnilistFavoriteCharacters(session.user.name, setDataState, params).then(
 				(characters) => {
 					if (searchParams.limit != null)
 						characters = characters.slice(0, searchParams.limit);
@@ -230,8 +241,8 @@ export default function Page({ searchParams }) {
 			});
 			// await new Promise((resolve) => setTimeout(resolve, fadeSpeed));
 			// delete everything after the .png
-			rightRef.current.querySelector("img").src = "/GenshinImpact/" + b.name + ".png";
-			leftRef.current.querySelector("img").src = "/GenshinImpact/" + a.name + ".png";
+			rightRef.current.querySelector("img").src = b.image;
+			leftRef.current.querySelector("img").src = a.image;
 			elements.forEach((element) => {
 				element.style.opacity = 1;
 			});
@@ -326,6 +337,18 @@ export default function Page({ searchParams }) {
 
 	return orderedCharacters.length == 0 ? (
 		<div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2 pt-16">
+			<div>
+				<select
+					defaultValue={params.option}
+					onChange={(e) => {
+						const newParams = new URLSearchParams(searchParams);
+						router.push("/rank/" + e.target.value + "?" + newParams.toString());
+					}}
+					className="text-white bg-anilist-300 px-2 p-1 text-xs rounded-full shadow-xs shadow-anilist-400">
+					<option value="GenshinImpact">Genshin Impact</option>
+					<option value="StarRail">Honkai: Star Rail</option>
+				</select>
+			</div>
 			<div className="w-3/4 md:w-4/12 bg-anilist-100 rounded-full h-6 overflow-hidden relative shadow-xs shadow-anilist-400">
 				<div className=" absolute inset-0 text-white text-xs p-3 flex justify-between items-center">
 					<span className="font-semibold flex-1 flex items-center gap-0.5">
@@ -361,7 +384,7 @@ export default function Page({ searchParams }) {
 					className="bg-anilist-400 h-full"
 				></div>
 			</div>
-			<div className="w-full h-5/6 flex justify-center items-center gap-2">
+			<div className="w-full h-[70%] flex justify-center items-center gap-2">
 				<div
 					ref={leftRef}
 					key={"left"}
@@ -399,7 +422,7 @@ export default function Page({ searchParams }) {
                 </div>
 		</div>
 	) : (
-		<div className="bg-anilist-300 min-h-screen py-16 pb-2">
+		<div className="bg-anilist-300 min-h-screen py-16">
 			<div className="w-full h-full flex justify-center items-center flex-col pt-4">
 				<div className="w-full md:w-[720px] h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
 					{
