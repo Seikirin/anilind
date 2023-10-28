@@ -125,11 +125,11 @@ function SortedCharacterElement({ character, i }) {
 	return (
 		<div
 			key={character.name}
-			className="overflow-hidden w-[calc(100%/5)] aspect-[2/3] cursor-pointer hover:brightness-110 transition-all relative"
+			className="overflow-hidden w-[calc(100%/5)] aspect-[9/16] cursor-pointer hover:brightness-110 transition-all relative"
 		>
 			<img
-				src={character.image}
-				className="h-full aspect-[2/3] object-cover z-10 absolute inset-0 m-0.5 rounded bg-anilist-100 "
+				src={"/GenshinImpact/" + character.name + ".png"}
+				className="h-full aspect-[9/16] object-cover z-10 absolute inset-0 m-0.5 rounded bg-anilist-100 "
 			/>
 			<div    style={{backgroundColor: character.color}}
                     className={`text-white absolute top-2 left-2 z-10 px-1 text-sm rounded bg-opacity-75 flex justify-center items-center`}>
@@ -229,8 +229,9 @@ export default function Page({ searchParams }) {
 					"https://cdn.discordapp.com/attachments/633768073068806144/1138119420317810892/brave_vOA72DIU8U.png";
 			});
 			// await new Promise((resolve) => setTimeout(resolve, fadeSpeed));
-			rightRef.current.querySelector("img").src = b.image;
-			leftRef.current.querySelector("img").src = a.image;
+			// delete everything after the .png
+			rightRef.current.querySelector("img").src = "/GenshinImpact/" + b.name + ".png";
+			leftRef.current.querySelector("img").src = "/GenshinImpact/" + a.name + ".png";
 			elements.forEach((element) => {
 				element.style.opacity = 1;
 			});
@@ -324,7 +325,7 @@ export default function Page({ searchParams }) {
 	useEffect(() => {}, [orderedCharacters]);
 
 	return orderedCharacters.length == 0 ? (
-		<div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2">
+		<div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2 pt-16">
 			<div className="w-3/4 md:w-4/12 bg-anilist-100 rounded-full h-6 overflow-hidden relative shadow-xs shadow-anilist-400">
 				<div className=" absolute inset-0 text-white text-xs p-3 flex justify-between items-center">
 					<span className="font-semibold flex-1 flex items-center gap-0.5">
@@ -360,30 +361,30 @@ export default function Page({ searchParams }) {
 					className="bg-anilist-400 h-full"
 				></div>
 			</div>
-			<div className="w-full h-1/2 flex justify-center items-center gap-2">
+			<div className="w-full h-5/6 flex justify-center items-center gap-2">
 				<div
 					ref={leftRef}
 					key={"left"}
-					className="rounded overflow-hidden h-full aspect-[2/3] cursor-pointer hover:brightness-110 transition-all relative"
+					className="rounded overflow-hidden h-full aspect-[9/16] cursor-pointer hover:brightness-110 transition-all relative"
 				>
 					<img
 						draggable={false}
 						src={null}
 						style={{ opacity: 0, maxHeight: 0 }}
-						className="h-full aspect-[2/3] object-cover z-10 absolute inset-0 select-none bg-anilist-100 "
+						className="h-full aspect-[9/16] object-cover z-10 absolute inset-0 select-none bg-anilist-100 "
 					/>
 					<SlidingSuspense />
 				</div>
 				<div
 					ref={rightRef}
 					key={"idk"}
-					className="rounded overflow-hidden h-full aspect-[2/3] cursor-pointer hover:brightness-110 transition-all relative"
+					className="rounded overflow-hidden h-full aspect-[9/16] cursor-pointer hover:brightness-110 transition-all relative"
 				>
 					<img
 						draggable={false}
 						src={null}
 						style={{ opacity: 0, maxHeight: 0 }}
-						className="h-full aspect-[2/3] object-cover z-10 absolute inset-0 select-none bg-anilist-100 "
+						className="h-full aspect-[9/16] object-cover z-10 absolute inset-0 select-none bg-anilist-100 "
 					/>
 					<SlidingSuspense />
 				</div>
@@ -400,7 +401,7 @@ export default function Page({ searchParams }) {
 	) : (
 		<div className="bg-anilist-300 min-h-screen py-16 pb-2">
 			<div className="w-full h-full flex justify-center items-center flex-col pt-4">
-				<div className="w-full md:w-1/4 h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
+				<div className="w-full md:w-[720px] h-1/2 flex flex-wrap justify-center items-center content-center rounded overflow-hidden">
 					{
                         orderedCharacters.map((characters, i) => {
                             return characters.map((character, j) => {
