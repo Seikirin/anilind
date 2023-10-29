@@ -181,8 +181,6 @@ export default function Page({ searchParams, params }) {
 	const fadeSpeed = 100;
 	const router = useRouter();
 
-	console.log("characters", characters);
-
 
 	const onClickRight = () => {
 		if (choices.current.length != 2 || !canChoose.current) return;
@@ -352,7 +350,7 @@ export default function Page({ searchParams, params }) {
 
 	return orderedCharacters.length == 0 ? (
 		<div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2 pt-16">
-			<PreloadImages characters={characters} />
+			{/* <PreloadImages characters={characters} /> */}
 			<div>
 				<select
 					defaultValue={params.option}
