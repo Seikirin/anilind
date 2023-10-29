@@ -149,6 +149,19 @@ function SortedCharacterElement({ character, i }) {
 	);
 }
 
+function PreloadImages({ characters }) {
+	return (
+		<div className="hidden">
+			{
+				characters.map(([character]) => {
+					console.log("preloading", character.image);
+					return <img src={character.image} key={character.name} />
+				})
+			}
+		</div>
+	);
+}
+
 export default function Page({ searchParams, params }) {
 	const { dataState, setDataState } = useContext(DataContext);
 	const { data: session, status } = useSession();
@@ -167,6 +180,8 @@ export default function Page({ searchParams, params }) {
 	const canChoose = useRef(false);
 	const fadeSpeed = 100;
 	const router = useRouter();
+
+	console.log("characters", characters);
 
 
 	const onClickRight = () => {
@@ -337,6 +352,7 @@ export default function Page({ searchParams, params }) {
 
 	return orderedCharacters.length == 0 ? (
 		<div className="absolute inset-0 bg-anilist-300 flex items-center justify-center flex-col gap-2 pt-16">
+			<PreloadImages characters={characters} />
 			<div>
 				<select
 					defaultValue={params.option}
